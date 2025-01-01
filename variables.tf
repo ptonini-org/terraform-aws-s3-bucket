@@ -87,3 +87,11 @@ variable "logging" {
   default = null
 }
 
+variable "website" {
+  type = object({
+    index_document = optional(string, "index.html")
+    error_document = optional(string, "error.html")
+  })
+  default = null
+}
+

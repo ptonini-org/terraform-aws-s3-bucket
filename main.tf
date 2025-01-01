@@ -58,13 +58,15 @@ resource "aws_s3_bucket_policy" "this" {
   bucket = aws_s3_bucket.this.id
   policy = jsonencode({
     Version = "2012-10-17",
-    Statement = concat(var.bucket_policy_statements, [{
-      Principal = "*"
-      Effect    = "Deny"
-      Action    = ["s3:*"]
-      Resource  = ["arn:aws:s3:::${aws_s3_bucket.this.bucket}", "arn:aws:s3:::${aws_s3_bucket.this.bucket}/*"]
-      Condition = { Bool = { "aws:SecureTransport" = "false" } }
-    }])
+    Statement = concat(var.bucket_policy_statements, [
+      {
+        Principal = "*"
+        Effect    = "Deny"
+        Action    = ["s3:*"]
+        Resource  = ["arn:aws:s3:::${aws_s3_bucket.this.bucket}", "arn:aws:s3:::${aws_s3_bucket.this.bucket}/*"]
+        Condition = { Bool = { "aws:SecureTransport" = "false" } }
+      }
+    ])
   })
 }
 
@@ -112,6 +114,19 @@ resource "aws_s3_bucket_logging" "this" {
   target_prefix = coalesce(var.logging.target_prefix, var.name)
 }
 
+resource "aws_s3_bucket_website_configuration" "this" {
+  count  = var.website == null ? 0 : 1
+  bucket = aws_s3_bucket.this.id
+
+  index_document {
+    suffix = var.website.index_document
+  }
+
+  error_document {
+    key = var.website.error_document
+  }
+}
+
 locals {
   policy_statement = [
     {
@@ -119,12 +134,17 @@ locals {
       actions   = ["s3:ListAllMyBuckets"]
       resources = ["arn:aws:s3:::*"]
     },
-    { effect    = "Allow"
+    {
+      effect    = "Allow"
       actions   = ["s3:ListBucket", "s3:GetBucketLocation", "s3:ListBucketMultipartUploads", "s3:ListBucketVersions"]
       resources = [aws_s3_bucket.this.arn]
     },
-    { effect    = "Allow"
-      actions   = ["s3:GetObject", "s3:PutObject", "s3:PutObjectAcl", "s3:DeleteObject", "s3:AbortMultipartUpload", "s3:ListMultipartUploadParts"]
+    {
+      effect = "Allow"
+      actions = [
+        "s3:GetObject", "s3:PutObject", "s3:PutObjectAcl", "s3:DeleteObject", "s3:AbortMultipartUpload",
+        "s3:ListMultipartUploadParts"
+      ]
       resources = ["${aws_s3_bucket.this.arn}/*"]
     }
   ]
